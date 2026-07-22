@@ -82,6 +82,7 @@ export function setServerSetting(setting: ServerSetting) {
 
 export function removeServerSetting(guild: Snowflake) {
 	if (indices.hasOwnProperty(guild)) {
+		updateClanTag(settings[indices[guild]], null);
 		settings.splice(indices[guild], 1);
 		delete indices[guild];
 		updateSettings();

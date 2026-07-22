@@ -59,7 +59,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 		if (!clan) {
 			interaction.reply({
 				embeds: [
-					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("This serer does not have a clan tag set!").setColor(Colors.Red).setTimestamp().toJSON()
+					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("This server does not have a clan tag set!").setColor(Colors.Red).setTimestamp().toJSON()
 				],
 				ephemeral: true
 			}).catch(() => {});
@@ -87,7 +87,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 			components: [
 				new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 					new StringSelectMenuBuilder().setCustomId("claim_channel").setPlaceholder("Select a game").addOptions(choices.map((choice) => {
-						return {label: choice.contest ? "Contest with " + choice.playerCount + " players on " + choice.map : choice.teamCount + " Teams with" + choice.playerCount + " players on " + choice.map, value: `${choice.contest ? "cont" : "norm"}-${choice.map}-${choice.clans[clanTag]}-${factorId}-` + Math.random().toString(10)}
+						return {label: choice.contest ? "Contest with " + choice.playerCount + " players on " + choice.map : "Clan game with " + choice.playerCount + " players on " + choice.map, value: `${choice.contest ? "cont" : "norm"}-${choice.map}-${choice.points}-${factorId}-` + Math.random().toString(10)}
 					}))
 				)
 			],

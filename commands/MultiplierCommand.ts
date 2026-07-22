@@ -28,8 +28,8 @@ export default {
 				let multiplier = interaction.options.getNumber("multiplier", true);
 				let description = interaction.options.getString("description", true);
 				let end = interaction.options.getString("end");
-				if (isNaN(multiplier) || multiplier < 1 || multiplier > 5) {
-					await context.reply(createErrorEmbed(context.user, "Multiplier must be at least 1 and at most 5"));
+				if (isNaN(multiplier) || multiplier < 0 || multiplier > 100) {
+					await context.reply(createErrorEmbed(context.user, "Multiplier must be at least 0 and at most 100"));
 					return;
 				}
 				multiplier = Math.round(multiplier * 100) / 100;

@@ -7,8 +7,8 @@ let cache: CacheEntry[] = [];
 let subscribers: { [key: string]: string[] } = {};
 
 interface CacheEntry {
-	clans: { [key: string]: number };
-	teamCount: number;
+	clan: string;
+	points: number;
 	map: string;
 	playerCount: number;
 	contest: boolean;
@@ -17,30 +17,24 @@ interface CacheEntry {
 
 export function addToCache(data: string) {
 	let message = JSON.parse(data).data;
-	let match = message.match(/^```Time:\s{9}.*\sGame\sMode:\s{4}(\d)\sTeams((?:,\sContest)?)\sMap:\s{10}([\w\s]+)\sPlayer Count:\s(\d+)\sTeam\sT:\s{7}(\d+)\sPercentage\sL:\s\d*\.\d*\sRes:((?:\s{4}\[[^\]]+]:[\s.+=,T\d]+\(\s*\d+\.\d+%\))+)```$/);
+	let match = message.match(/^```\sTime:\s{10}.*\sContest:\s{7}(Yes|No)\sMap:\s{11}([^\n]+)\sPlayer Count:\s{2}(\d+)\sWinning\sClan:\s{2}\[(.*)]\sPrev.\sPoints:\s{1,2}([\d.]+)\sGain:\s{10}([\d.]+)\sCurr.\sPoints:\s{1,2}([\d.]+)\sPayout:[^\n]+\sClan Winners:[^\n]+```$/);
 	if (!match) {
 		tryHandlePlayerData(message);
 		return;
 	}
 	clearCache();
-	let clans = match[6].matchAll(/\s{3}\[([^\]]+)]:\s*(\d*\.\d*)\s*\+\s*\d*\.\d*\s*=\s*(\d*\.\d*),\s*T\s*=\s*(\d*)\s*\(\s*\d*\d\.\d*%\)/g);
-	let winClans: { [key: string]: number } = {};
-	for (const clan of clans) {
-		const points = Math.round((parseInt(clan[4]) * (match[2] === ", Contest" ? 2 : 1) * parseInt(match[4]) / parseInt(match[5])) * 100) / 100;
-		winClans[clan[1]] = points;
-		setClanScore(clan[1], clan[3]);
+	setClanScore(match[4], match[7]);
 
-		const msg = `**${clan[1]}**    ${match[1]} Team  ${match[3]}    ${points}  [${clan[2]}->${clan[3]}]`;
-		sendToSubscribers(clan[1], msg);
-		sendToSubscribers("ALL", msg);
-		sendToFeed(clan[1], msg, points).catch(() => {});
-	}
+	const msg = `**${match[4]}**    ${match[2]}    ${match[1] === "Yes" ? "2 x " : ""}${parseInt(match[3])}  [${match[5]}->${match[7]}]`;
+	sendToSubscribers(match[4], msg);
+	sendToSubscribers("ALL", msg);
+	sendToFeed(match[4], msg, parseInt(match[3]) * (match[1] === "Yes" ? 2 : 1)).catch(() => {});
 	cache.push({
-		clans: winClans,
-		teamCount: parseInt(match[1]),
-		map: match[3],
-		playerCount: parseInt(match[4]),
-		contest: match[2] === ", Contest",
+		clan: match[4],
+		points: parseInt(match[3]),
+		map: match[2],
+		playerCount: parseInt(match[3]),
+		contest: match[1] === "Yes",
 		timestamp: Date.now()
 	});
 }
@@ -72,7 +66,7 @@ export function unsubscribe(clan: string, webhook: string) {
 }
 
 export function getCacheForClan(clan: string): CacheEntry[] {
-	return cache.filter(entry => entry.clans.hasOwnProperty(clan));
+	return cache.filter(entry => entry.clan === clan);
 }
 
 export function clearCache() {
