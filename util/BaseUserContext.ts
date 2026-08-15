@@ -1,5 +1,5 @@
 import {BaseMessageOptions, ButtonInteraction, ChatInputCommandInteraction, Guild, GuildMember, Message, MessageContextMenuCommandInteraction, MessagePayload, Snowflake, StringSelectMenuInteraction, TextBasedChannel, User, UserContextMenuCommandInteraction} from "discord.js";
-import {Database} from "sqlite3";
+import {Database} from "better-sqlite3";
 import {client, db} from "../PointManager.js";
 
 export type InteractionTypes = ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction | MessageContextMenuCommandInteraction | UserContextMenuCommandInteraction;
@@ -67,18 +67,16 @@ export class BaseUserContext {
 		return {name: this.user.tag, iconURL: this.user.displayAvatarURL()};
 	}
 
-	async getTotalData(): Promise<{ points: number, wins: number }> {
-		return new Promise((resolve) => {
-			resolve({points: 0, wins: 0});
-		});
+	getTotalData(): { points: number, wins: number } {
+		return {points: 0, wins: 0};
 	}
 
-	async getAllTimeEntryCount(): Promise<number> {
+	getAllTimeEntryCount(): number {
 		return 0;
 	}
 
 	async deleteUser() {
-		this.db.run("DELETE FROM global_points WHERE member = ?", [this.id]);
-		this.db.run("DELETE FROM daily_points WHERE member = ?", [this.id]);
+		this.db.prepare("DELETE FROM global_points WHERE member = ?").run(this.id);
+		this.db.prepare("DELETE FROM daily_points WHERE member = ?").run(this.id);
 	}
 }

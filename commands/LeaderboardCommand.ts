@@ -19,9 +19,9 @@ export default {
 
 async function buildLeaderboardPage(context: BotUserContext, page: number, wins: boolean, duration: number) {
 	if (isNaN(duration)) duration = 7;
-	const max: number = Math.ceil(await (duration === -1 ? context.getAllTimeEntryCount() : context.getDailyEntryCount(duration)) / 10);
+	const max: number = Math.ceil((duration === -1 ? context.getAllTimeEntryCount() : context.getDailyEntryCount(duration)) / 10);
 	page = Math.max(1, Math.min(page, max));
-	const leaderboard = await (duration === -1 ? context.getAllTimeLeaderboard(wins, page) : context.getDailyLeaderboard(wins, duration, page));
+	const leaderboard = duration === -1 ? context.getAllTimeLeaderboard(wins, page) : context.getDailyLeaderboard(wins, duration, page);
 	let start = new Date(), end = new Date();
 	if (duration !== -1) {
 		start.setUTCHours(0, 0, 0, 0);

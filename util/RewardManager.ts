@@ -22,7 +22,7 @@ export function getRewardList(context: BotUserContext): Reward[] {
 }
 
 export async function calculateEligibleRoles(context: BotUserContext) {
-	const total = await context.getData();
+	const total = context.getData();
 	const roles: Reward[] = [];
 	for (const reward of rewards[context.guild.id]) {
 		if (total[reward.type] >= reward.count) {
@@ -51,7 +51,7 @@ export function filterByHierarchy(roles: Reward[]): Reward[] {
 }
 
 export async function getProgress(context: BotUserContext): Promise<{ role: Snowflake, has: number, needs: number }[]> {
-	const total = await context.getData();
+	const total = context.getData();
 	const progress: { role: Snowflake, has: number, needs: number }[] = [];
 	for (const id of hierarchy[context.guild.id]) {
 		const reward = rewards[context.guild.id][id];

@@ -22,11 +22,11 @@ export async function showProfileEmbed(context: BotUserContext, target: Snowflak
 	let files: AttachmentBuilder[] = [];
 	switch (page) {
 		case 0:
-			const global = await provider.getData();
-			const last = await provider.getDailyData(14);
+			const global = provider.getData();
+			const last = provider.getDailyData(14);
 			embed.addFields(
-				{name: "Lifetime", value: `Points: ${format(global.points)} (#${await provider.getAllTimePointRank()})\nWins: ${format(global.wins)} (#${await provider.getAllTimeWinRank()})`, inline: true},
-				{name: "Last 14 Days", value: `Points: ${format(last.points)} (#${await provider.getDailyPointRank(14)})\nWins: ${format(last.wins)} (#${await provider.getDailyWinRank(14)})`, inline: true}
+				{name: "Lifetime", value: `Points: ${format(global.points)} (#${provider.getAllTimePointRank()})\nWins: ${format(global.wins)} (#${provider.getAllTimeWinRank()})`, inline: true},
+				{name: "Last 14 Days", value: `Points: ${format(last.points)} (#${provider.getDailyPointRank(14)})\nWins: ${format(last.wins)} (#${provider.getDailyWinRank(14)})`, inline: true}
 			);
 			break;
 		case 1:
@@ -38,7 +38,7 @@ export async function showProfileEmbed(context: BotUserContext, target: Snowflak
 			break;
 		case 2:
 			try {
-				const buffer = await renderDualChart(await provider.getLegacyData(30));
+				const buffer = await renderDualChart(provider.getLegacyData(30));
 				files.push(new AttachmentBuilder(buffer).setName("chart.png"));
 				embed.setImage("attachment://chart.png");
 			} catch (e) {
