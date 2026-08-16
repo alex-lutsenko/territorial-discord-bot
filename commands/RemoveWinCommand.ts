@@ -12,6 +12,10 @@ export default {
 		const interaction = context.base as ChatInputCommandInteraction;
 		const user: User = interaction.options.getUser("member") || context.user;
 		const points: number = interaction.options.getInteger("points", true);
+		if (!context.canClaimWin()) {
+			await context.reply(createErrorEmbed(context.user, context.context.claim_win_roles_message));
+			return;
+		}
 		if (user.id !== context.user.id && !context.hasModAccess()) {
 			await context.reply(createErrorEmbed(interaction.user, "❌ You can't remove points from other members!"));
 			return;
@@ -21,11 +25,8 @@ export default {
 			await context.reply(err);
 			return;
 		}
-		const multiplier = await db.getSettingProvider().getMultiplier(context);
-		let realPoints = points;
-		if (multiplier) {
-			realPoints = Math.ceil(points * multiplier.amount);
-		}
+		const multiplier = context.context.multiplier;
+		let realPoints = Math.ceil( points * ( multiplier?.amount ?? 1 ));
 		const response = await getRawUser(context.guild.id, user.id)?.removeWin(realPoints) || [];
 		if (user.id !== context.user.id) {
 			logAction(context, `Removed win of ${points} points from ${user}`, Colors.Yellow);
@@ -67,6 +68,10 @@ export async function tryRemoveEntryMessage(context: BotUserContext, message: st
 		target = args[0];
 		args.shift();
 	}
+	if (!context.canClaimWin()) {
+		await context.reply(createErrorEmbed(context.user, context.context.claim_win_roles_message));
+		return true;
+	}
 	if (target !== context.user.id && !context.hasModAccess()) {
 		await context.reply(createErrorEmbed(context.user, "❌ You can't remove points from other members!"));
 		return true;
@@ -88,11 +93,8 @@ export async function tryRemoveEntryMessage(context: BotUserContext, message: st
 		await context.reply(err);
 		return true;
 	}
-	const multiplier = await db.getSettingProvider().getMultiplier(context);
-	let realPoints = points;
-	if (multiplier) {
-		realPoints = Math.ceil(points * multiplier.amount);
-	}
+	const multiplier = context.context.multiplier;
+	let realPoints = Math.ceil(points * ( multiplier?.amount ?? 1 ));
 	const response = await getRawUser(context.guild.id, target)?.removeWin(realPoints) || [];
 	if (target !== context.user.id) {
 		logAction(context, `Removed win of ${points} points from <@${target}>`, Colors.Yellow);

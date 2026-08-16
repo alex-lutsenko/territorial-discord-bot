@@ -15,12 +15,12 @@ export class BotUserContext extends BaseUserContext {
 
 	hasModAccess(): boolean {
 		if (!this.member) return false;
-		for (const role of this.member.roles.cache.values() || []) {
-			if (this.context.mod_roles.includes(role.id)) {
-				return true;
-			}
-		}
-		return false;
+		return this.member.roles.cache.some( role => this.context.mod_roles.includes( role.id ));
+	}
+	//Check if user can claim a Win or add/remove points
+	canClaimWin(): boolean {
+		if (!this.member) return false;
+		return this.member.roles.cache.some( role => this.context.claim_win_roles.includes( role.id ));
 	}
 
 	async registerWin(points: number): Promise<RewardAnswer[]> {

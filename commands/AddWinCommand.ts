@@ -12,6 +12,10 @@ export default {
 		const interaction = context.base as ChatInputCommandInteraction;
 		const user: User = interaction.options.getUser("member") || context.user;
 		const points: number = interaction.options.getInteger("points", true);
+		if (!context.canClaimWin()) {
+			await context.reply(createErrorEmbed(context.user, context.context.claim_win_roles_message));
+			return;
+		}
 		if (user.id !== context.user.id && !context.hasModAccess()) {
 			await context.reply(createErrorEmbed(context.user, "❌ You can't add points to other members!"));
 			return;
@@ -21,11 +25,8 @@ export default {
 			await context.reply(err);
 			return;
 		}
-		const multiplier = db.getSettingProvider().getMultiplier(context);
-		let realPoints = points;
-		if (multiplier) {
-			realPoints = Math.ceil(points * multiplier.amount);
-		}
+		const multiplier = context.context.multiplier;
+		let realPoints = Math.ceil(points * ( multiplier?.amount ?? 1 ));
 		const response = await getRawUser(context.guild.id, user.id)?.registerWin(realPoints) || [];
 		if (user.id !== context.user.id) {
 			logAction(context, `Added ${points} points to ${user}`, Colors.Yellow);
@@ -131,6 +132,10 @@ export async function tryAddEntryMessage(context: BotUserContext, message: strin
 		}
 	}
 	targets = targets.filter((member, index, self) => self.indexOf(member) === index);
+	if (!context.canClaimWin()) {
+		await context.reply(createErrorEmbed(context.user, context.context.claim_win_roles_message));
+		return true;
+	}
 	if (targets.length === 0) {
 		await context.reply(createErrorEmbed(context.user, "❌ No valid members found!"));
 		return true;
@@ -160,11 +165,9 @@ export async function tryAddEntryMessage(context: BotUserContext, message: strin
 		await context.reply(err);
 		return true;
 	}
-	const multiplier = db.getSettingProvider().getMultiplier(context);
-	let realPoints = points;
-	if (multiplier) {
-		realPoints = Math.ceil(points * multiplier.amount);
-	}
+	const multiplier = context.context.multiplier;
+	let realPoints = Math.ceil(points * ( multiplier?.amount ?? 1 ));
+
 	if (targets.length === 1) {
 		const target = targets[0];
 		if (target !== context.user.id && !context.hasModAccess()) {

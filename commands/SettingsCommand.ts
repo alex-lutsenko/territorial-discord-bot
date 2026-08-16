@@ -25,6 +25,10 @@ export default {
 		.addSubcommand(sub => sub.setName("removefactor").setDescription("Remove a factor button").addStringOption(option => option.setName("name").setDescription("The name of the button").setRequired(true)))
 		.addSubcommand(sub => sub.setName("settag").setDescription("Set the clan tag").addStringOption(option => option.setName("tag").setDescription("The tag to set").setRequired(true)))
 		.addSubcommand(sub => sub.setName("show").setDescription("Show the current settings"))
+		.addSubcommand(sub => sub.setName("addclaimwinrole").setDescription("Add a role to the Claim Win roles").addRoleOption(option => option.setName("role").setDescription("The role to add").setRequired(true)))
+		.addSubcommand(sub => sub.setName("removeclaimwinrole").setDescription("Remove a role from the Claim Win roles").addRoleOption(option => option.setName("role").setDescription("The role to remove").setRequired(true)))
+		.addSubcommand(sub => sub.setName("setclaimwinrolemessage").setDescription("Set the message displayed when users do not have any of the Claim Win roles").addStringOption(option => option.setName("message").setDescription("The message to display").setRequired(true)))
+		.addSubcommand(sub => sub.setName("resetclaimwinrolemessage").setDescription("Reset to default the message displayed when users do not have any of the Claim Win roles"))
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BotUserContext) => {
 		const interaction = context.base as ChatInputCommandInteraction;
@@ -91,6 +95,14 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 			context.context.mod_roles.splice(context.context.mod_roles.indexOf(role), 1);
 		}
 	}
+	for (const role of context.context.claim_win_roles) {
+		if (!context.guild.roles.cache.has(role)) {
+			changes.push(`Removed invalid role ${role} from the Claim Win roles`);
+			context.context.claim_win_roles.splice(context.context.claim_win_roles.indexOf(role), 1);
+		}
+	}
+	if( context.context.claim_win_roles.length === 0 )
+			changes.push(`🚫 There are no roles configured that can claim a win!.`);
 	if (context.context.rewards.length !== 0) {
 		if (!context.guild.members.cache.get(client.user!.id)?.permissions.has(PermissionFlagsBits.ManageRoles)) {
 			changes.push("I don't have permission to manage roles");
@@ -150,64 +162,72 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 			return [
 				{
 					name: "🏷️ Clan Tag",
-					value: `\`${context.tag || "None"}\`\nSet this to enable the full feature set.\nEdit: </settings settag:${getCommandId("settings")}>`
+					value: `\`${context.tag || "None"}\`\nSet this to enable the full feature set.\nEdit: </settings settag:${getCommandId("settings")}>\n\u200B`
 				},
-				{
+				/*{
 					name: "♻ Automatic Point Management",
-					value: (context.auto_points ? "Enabled" : "Disabled") + `\nAllows to automatically add points when members with them using [BetterTT](https://platz1de.github.io/BetterTT/).\n\nMake sure to follow the setup guide: </endpoint:${getCommandId("endpoint")}>\nEdit: </settings toggleautopoints:${getCommandId("settings")}>`
-				},
+					value: (context.auto_points ? "Enabled" : "Disabled") + `\nAllows to automatically add points.\nEdit: </settings toggleautopoints:${getCommandId("settings")}>\n\u200B`
+				},*/
 				{
 					name: "🔢 Multiplier",
-					value: (context.multiplier ? `\`x ${context.multiplier.amount}\`` : "Inactive") + `\nPoints are multiplied by this amount when added to a member's balance.\nEdit: </multiplier set:${getCommandId("multiplier")}> & </multiplier clear:${getCommandId("multiplier")}>`
+					value: (context.multiplier ? `\`x ${context.multiplier.amount}\`` : "Inactive") + `\nPoints are multiplied by this amount when added to a member's balance.\nEdit: </multiplier set:${getCommandId("multiplier")}> & </multiplier clear:${getCommandId("multiplier")}>\n\u200B`
 				}
 			];
 		case 1:
 			return [
 				{
 					name: "📝 Win Feed",
-					value: (context.win_feed ? `<#${context.win_feed}>` : "Inactive") + `\nPosts a message in this channel when your clan wins a game. Allows members to claim points.\nEdit: </settings setwinfeed:${getCommandId("settings")}> & </settings removewinfeed:${getCommandId("settings")}>`
+					value: (context.win_feed ? `<#${context.win_feed}>` : "Inactive") + `\nPosts a message in this channel when your clan wins a game. Allows members to claim points.\nEdit: </settings setwinfeed:${getCommandId("settings")}> & </settings removewinfeed:${getCommandId("settings")}>\n\u200B`
 				},
 				{
 					name: "📑 Claim Channel",
-					value: (context.claim_channel ? `<#${context.claim_channel}>` : "Inactive") + `\nDescription: ${context.claim_channel_description}\nAllows members to claim points for games they won by selecting a recent game.\nEdit: </settings setclaimchannel:${getCommandId("settings")}> & </settings removeclaimchannel:${getCommandId("settings")}> & </settings setclaimchanneldescription:${getCommandId("settings")}>`
+					value: (context.claim_channel ? `<#${context.claim_channel}>` : "Inactive") + `\nDescription: ${context.claim_channel_description}\nAllows members to claim points for games they won by selecting a recent game.\nEdit: </settings setclaimchannel:${getCommandId("settings")}> & </settings removeclaimchannel:${getCommandId("settings")}> & </settings setclaimchanneldescription:${getCommandId("settings")}>\n\u200B`
 				},
 				{
 					name: "🔘 Factor Buttons",
-					value: `${context.factor_buttons.length === 0 ? "None" : context.factor_buttons.map((f) => `${f.name}: ${f.factor}\n`).join("")}\nAllows you to add multiple claiming methods for win feeds / claim channels. E.g. you can have one button for 100% and one for 50% of the points (note that the requirements your server puts aren't verified).\nEdit: </settings addfactor:${getCommandId("settings")}> & </settings removefactor:${getCommandId("settings")}>`
+					value: `${context.factor_buttons.length === 0 ? "None" : context.factor_buttons.map((f) => `${f.name}: ${f.factor}\n`).join("")}\nAllows you to add multiple claiming methods for win feeds / claim channels. E.g. you can have one button for 100% and one for 50% of the points (note that the requirements your server puts aren't verified).\nEdit: </settings addfactor:${getCommandId("settings")}> & </settings removefactor:${getCommandId("settings")}>\n\u200B`
 				}
 			];
 		case 2:
 			return [
 				{
 					name: "👑 Win Channels",
-					value: context.channel_id.map((id) => `<#${id}>`).join("\n") + `\nWin add commands are only accepted in these channels to keep your server clean.\nEdit </settings removechannel:${getCommandId("settings")}> & </settings addchannel:${getCommandId("settings")}>`
+					value: context.channel_id.map((id) => `<#${id}>`).join("\n") + `\nWin add commands are only accepted in these channels to keep your server clean.\nEdit </settings removechannel:${getCommandId("settings")}> & </settings addchannel:${getCommandId("settings")}>\n\u200B`
 				},
 				{
 					name: "📜 Log Channel",
-					value: `<#${context.log_channel_id}>\nAll moderation or potentially dangerous actions are logged here.\nEdit: </settings setlogchannel:${getCommandId("settings")}>`
+					value: `<#${context.log_channel_id}>\nAll moderation or potentially dangerous actions are logged here.\nEdit: </settings setlogchannel:${getCommandId("settings")}>\n\u200B`
 				},
 				{
 					name: "📰 Update Channel",
-					value: `<#${context.update_channel_id}>\nImportant messages about the bot get posted here. (Only very rarely used)\nEdit: </settings setupdatechannel:${getCommandId("settings")}>`
+					value: `<#${context.update_channel_id}>\nImportant messages about the bot get posted here. (Only very rarely used)\nEdit: </settings setupdatechannel:${getCommandId("settings")}>\n\u200B`
 				},
 				{
 					name: "📋 Clan Feed",
-					value: `${context.webhooks.length} feeds\nFeeds allow you to get yours or all clan wins posted in a channel.\nEdit: </subscribefeed:${getCommandId("subscribefeed")}> & </unsubscribefeed:${getCommandId("unsubscribefeed")}>`
+					value: `${context.webhooks.length} feeds\nFeeds allow you to get yours or all clan wins posted in a channel.\nEdit: </subscribefeed:${getCommandId("subscribefeed")}> & </unsubscribefeed:${getCommandId("unsubscribefeed")}>\n\u200B`
 				}
 			];
 		case 3:
 			return [
 				{
 					name: "🛠 Mod Roles",
-					value: context.mod_roles.map((id) => `<@&${id}>`).join("\n") + `\nThese roles can use moderation commands and manage points of other members.\nEdit: </settings removemodrole:${getCommandId("settings")}> & </settings addmodrole:${getCommandId("settings")}>`
+					value: context.mod_roles.map((id) => `<@&${id}>`).join("\n") + `\nThese roles can use moderation commands and manage points of other members.\nEdit: </settings removemodrole:${getCommandId("settings")}> & </settings addmodrole:${getCommandId("settings")}>\n\u200B`
+				},
+				{
+					name: "🔐 Claim Win Roles",
+					value: `${context.claim_win_roles.length === 0 ? "🚫 No one can claim wins!" : context.claim_win_roles.map((id) => `<@&${id}>`).join("\n")}\nThese roles can use win claiming functions.\nEdit: </settings addclaimwinrole:${getCommandId("settings")}> & </settings removeclaimwinrole:${getCommandId("settings")}>\n\u200B`
+				},
+				{
+					name: "🔒 Claim Win Access Restricted Message",
+					value: `Message: ${context.claim_win_roles_message}\nMessage shown to members without Claim Win permission.\nEdit: </settings setclaimwinrolemessage:${getCommandId("settings")}> & </settings resetclaimwinrolemessage:${getCommandId("settings")}>\n\u200B`
 				},
 				{
 					name: "🏷️ Roles",
-					value: `\`${context.roles}\` (${context.roles === "all" ? "Keep all roles a member has unlocked" : "Only the highest role a member unlocked"})\nGeneral behaviour of reward roles.\nEdit: </settings toggleroles:${getCommandId("settings")}>`
+					value: `\`${context.roles}\` (${context.roles === "all" ? "Keep all roles a member has unlocked" : "Only the highest role a member unlocked"})\nGeneral behaviour of reward roles.\nEdit: </settings toggleroles:${getCommandId("settings")}>\n\u200B`
 				},
 				{
 					name: "🏆 Reward Roles",
-					value: `See all currect reward roles using </roles:${getCommandId("roles")}>\nReward roles are given once certain configurable milestones are reached.\nEdit </settings removerewardrole:${getCommandId("settings")}> & </settings addrewardrole:${getCommandId("settings")}>`
+					value: `See all currect reward roles using </roles:${getCommandId("roles")}>\nReward roles are given once certain configurable milestones are reached.\nEdit </settings removerewardrole:${getCommandId("settings")}> & </settings addrewardrole:${getCommandId("settings")}>\n\u200B`
 				}
 			];
 		default:
@@ -273,6 +293,13 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 		}
 		updateClanTag(context.context, tag === "" ? null : tag.toUpperCase());
 		await context.reply(`Set the clan tag to ${context.context.tag || "None"}!`);
+	} else if( index === "setclaimwinrolemessage" ) {
+		context.context.claim_win_roles_message = data.options.getString("message", true);
+		await context.reply(`Message Set!`);
+	} else if( index === "resetclaimwinrolemessage" ) {
+		let original = context.context.claim_win_roles_message;
+		context.context.claim_win_roles_message = context.context.getDefaults().claim_win_roles_message;
+		await context.reply(`The message:\n${original}\n has been replaced by default message:\n${context.context.claim_win_roles_message}`);
 	} else if (["addchannel", "removechannel", "setlogchannel", "setupdatechannel", "setwinfeed", "setclaimchannel"].includes(index)) {
 		let channel = data.options.getChannel("channel", true);
 		if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) {
@@ -336,6 +363,22 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 				}
 				context.context.mod_roles.splice(context.context.mod_roles.indexOf(role.id), 1);
 				await context.reply(`Removed <@&${role.id}> from the whitelist!`);
+				break;
+			case "addclaimwinrole":
+				if (context.context.claim_win_roles.includes(role.id)) {
+					await context.reply("That role is already in the whitelist!");
+					return;
+				}
+				context.context.claim_win_roles.push(role.id);
+				await context.reply(`Added <@&${role.id}> to the whitelist!`);
+				break;
+			case "removeclaimwinrole":
+				if (!context.context.claim_win_roles.includes(role.id)) {
+					await context.reply("That role isn't in the whitelist!");
+					return;
+				}
+				context.context.claim_win_roles.splice(context.context.claim_win_roles.indexOf(role.id), 1);
+				await context.reply(`Removed <@&${role.id}> from the whitelist!${context.context.claim_win_roles.length === 0 ? "\n🚫 There are no roles configured that can claim a win!." : ""}`);
 				break;
 			case "addrewardrole":
 				const roleId = role.id;

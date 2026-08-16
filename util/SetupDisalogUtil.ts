@@ -1,4 +1,4 @@
-import {getDefaults, ServerSetting, setServerSetting} from "../BotSettingProvider.js";
+import {ServerSetting, setServerSetting} from "../BotSettingProvider.js";
 import {ChatInputCommandInteraction, Message, PermissionFlagsBits} from "discord.js";
 import {getCommandId, rewards} from "../PointManager.js";
 import {BaseUserContext} from "./BaseUserContext.js";
@@ -98,7 +98,7 @@ export function startDialog(context: BaseUserContext) {
 		}).catch(() => {});
 		return;
 	}
-	dialogues[context.guild.id + ":" + context.user.id + ":" + context.channel?.id] = {data: getDefaults(), step: 0};
+	dialogues[context.guild.id + ":" + context.user.id + ":" + context.channel?.id] = {data: ServerSetting.getDefaults(), step: 0};
 	sendStep(context, undefined);
 }
 
@@ -149,7 +149,7 @@ export function handleDialog(context: BaseUserContext, message: string) {
 		context.reply({
 			embeds: [{
 				title: "Setup finished",
-				description: `The setup has been finished. Settings can be changed using </settings show:${getCommandId("settings")}> at any point.\nIf you want to setup reward roles, you can do it there as well.`,
+				description: `Initial setup has completed.\nAdditional options, including reward roles, can be configured using the </settings show:${getCommandId("settings")}> command at any point.`,
 				color: 0x00ff00
 			}]
 		}).catch(console.error);

@@ -1,6 +1,5 @@
 import Database from "better-sqlite3";
 import {Snowflake} from "discord.js";
-import * as settings from "../BotSettingProvider.js";
 
 const db = new Database("./ranking.db");
 db.pragma("journal_mode = WAL");
@@ -10,10 +9,6 @@ db.prepare("CREATE TABLE IF NOT EXISTS daily_points (guild TEXT, member TEXT, da
 
 export function getProvider(): Database.Database {
 	return db;
-}
-
-export function getSettingProvider() {
-	return settings;
 }
 
 export function deleteGuild(id: Snowflake) {

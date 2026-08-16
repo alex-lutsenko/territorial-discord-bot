@@ -1,17 +1,20 @@
 import * as fs from "fs";
 import {Snowflake} from "discord.js";
 import {rewards} from "./PointManager.js";
-import {BotUserContext} from "./util/BotUserContext.js";
 import {subscribe} from "./util/GameDataDistributor.js";
 
-export interface MultiplierSetting {
-	amount: number,
-	end: number | null,
-	description: string
-};
+export interface MultiplierSetting { amount: number, end: number | null, description: string };
+interface Rewards { role_id: string, type: "points" | "wins", count: number };
+interface WebHooks { clan: string, url: string, channel: Snowflake };
+interface FactorButtons{ name: string, factor: number };
 
-export interface ServerSetting {
-	roles: "all" | "highest",
+/*
+ServerSetting JSON file format that describes the minimum supported settings.json format.
+It is slightly different from ServerSetting class e.g. roles: string vs roles: "all" | "highest".
+New fields need to be added as optional
+*/
+interface JSONServerSetting {
+	roles: string,
 	auto_points: boolean,
 	guild_id: string,
 	tag: string | null,
@@ -19,55 +22,157 @@ export interface ServerSetting {
 	log_channel_id: string,
 	update_channel_id: string,
 	mod_roles: Snowflake[],
-	rewards: { role_id: string, type: "points" | "wins", count: number }[],
+	rewards: Rewards[],
 	multiplier: MultiplierSetting | null,
 	webhooks: { clan: string, url: string, channel: Snowflake }[],
 	win_feed: Snowflake | null,
 	claim_channel: Snowflake | null,
 	claim_channel_description: string | null,
+	claim_win_roles?: Snowflake[] | null,
+	claim_win_roles_message?: string,
 	factor_buttons: { name: string, factor: number }[],
 	status: number // first bit: 1 = points imported from 3rd party
 }
 
-//const settings: ServerSetting[] = require("./settings.json");
+// Main setting type that is used throughtout the code
+export class ServerSetting implements JSONServerSetting
+{
+	//Specify defaults
+	roles: "all" | "highest" = "all";
+	auto_points: boolean = false;
+	private _guild_id: string = "";  //should always have a value unless a new Guild registration
+	tag: string | null = null;
+	channel_id: Snowflake[] = [];
+	log_channel_id: string = "";
+	update_channel_id: string = "";
+	mod_roles: Snowflake[] = [];
+	rewards: Rewards[] = [];
+	private _multiplier: MultiplierSetting | null = null; //implemented as Getter and Setter
+	webhooks: WebHooks[] = [];
+	win_feed: Snowflake | null = null;
+	claim_channel: Snowflake | null = null;
+	claim_channel_description: string | null = null; //discord.js rejects "" as description
+	claim_win_roles: Snowflake[] = [];
+	claim_win_roles_message: string = "🔒 You do not have permission to Claim Wins.";
+	factor_buttons: FactorButtons[] = [];
+	status: number = 0; // first bit: 1 = points imported from 3rd party
+
+	get guild_id() : string { return this._guild_id; }
+	//handles new bot setups
+	set guild_id( value: string )
+	{
+		//add @everyone to claim_win_roles for new setups
+		if( this._guild_id === "" && this.claim_win_roles.length === 0 )
+				this.claim_win_roles.push(this.guild_id as Snowflake);
+	}
+
+	get multiplier() : MultiplierSetting | null
+	{	
+		if (this._multiplier?.end && this._multiplier.end < Date.now())
+			this.multiplier = null; //use setter to trigger updateSettings logic
+
+		return this._multiplier;
+	}
+
+	set multiplier( value: MultiplierSetting | null )
+	{	
+		if (value?.end && value.end < Date.now())
+			value = null;
+
+		this._multiplier = value;
+		updateSettings();
+	}
+
+	// Map settings.json to ServerSetting, validate existing data and set defaults for missing properties
+	constructor( j: JSONServerSetting | null )
+    {
+		// Allow initialisation with default values
+		if( !j )
+			return;
+
+		this.roles = ( j.roles && ( j.roles === "all" || j.roles === "highest" )) ? j.roles : this.roles;
+		this.auto_points = j.auto_points ?? this.auto_points;
+		//should always have a value for exsting guilds; do not use setter as claim_win_roles is still empty
+		this._guild_id = j.guild_id;
+		this.tag = j.tag ?? this.tag;
+		this.channel_id = j.channel_id ?? this.channel_id;
+		this.log_channel_id = j.log_channel_id ?? this.log_channel_id;
+		this.update_channel_id = j.update_channel_id ?? this.update_channel_id;
+		this.mod_roles = j.mod_roles ?? this.mod_roles;
+		this.rewards = j.rewards ?? this.rewards;
+		//do not use setter to avoid multiple updateSettings() calls
+		this._multiplier = j.multiplier ?? this._multiplier;
+		this.webhooks = j.webhooks ?? this.webhooks;
+		this.win_feed = j.win_feed ?? this.win_feed;
+		this.claim_channel = j.claim_channel ?? this.claim_channel;
+		this.claim_channel_description = j.claim_channel_description ?? this.claim_channel_description;
+		//existing guilds that do not have claim_win_roles set will get @everyone to preserve existing functionality; DS uses guild_id for @everyone
+		this.claim_win_roles = j.claim_win_roles ?? [this.guild_id as Snowflake];
+		this.claim_win_roles_message = j.claim_win_roles_message ?? this.claim_win_roles_message;
+		this.factor_buttons = j.factor_buttons ?? this.factor_buttons;
+		this.status = j.status ?? this.status;
+	}
+
+	public static getDefaults = (): ServerSetting => new ServerSetting( null );
+	public getDefaults = (): ServerSetting => new ServerSetting( null );
+
+	//JSON.stringify custom handler to properly handle fields with getters
+	public toJSON() {
+		return {
+			roles: this.roles,
+			auto_points: this.auto_points,
+			guild_id: this._guild_id,
+			tag: this.tag,
+			channel_id: this.channel_id,
+			log_channel_id: this.log_channel_id,
+			update_channel_id: this.update_channel_id,
+			mod_roles: this.mod_roles,
+			rewards: this.rewards,
+			multiplier: this._multiplier,
+			webhooks: this.webhooks,
+			win_feed: this.win_feed,
+			claim_channel: this.claim_channel,
+			claim_channel_description: this.claim_channel_description,
+			claim_win_roles: this.claim_win_roles,
+			claim_win_roles_message: this.claim_win_roles_message,
+			factor_buttons: this.factor_buttons,
+			status: this.status
+		}; }
+}
 import rawSettings from "./settings.json" with { type: "json" };
-const settings = rawSettings as ServerSetting[];
+
 const indices: { [key: Snowflake]: number } = {};
 const clanCache: { [key: string]: Snowflake[] } = {};
 
-for (const i in settings) {
-	if (!settings[i].status) settings[i].status = 0;
-	if (!settings[i].auto_points) settings[i].auto_points = false;
-	if (!settings[i].webhooks) settings[i].webhooks = [];
-	if (!settings[i].win_feed) settings[i].win_feed = null;
-	if (!settings[i].claim_channel) settings[i].claim_channel = null;
-	if (!settings[i].claim_channel_description) settings[i].claim_channel_description = null;
-	if (!settings[i].factor_buttons) settings[i].factor_buttons = [];
-	if (!settings[i].tag) settings[i].tag = null;
-	indices[settings[i].guild_id] = parseInt(i);
-
-	let tag = settings[i].tag;
-	if (tag !== null) {
-		if (!clanCache.hasOwnProperty(tag)) {
-			clanCache[tag] = [];
+//Load settings and initialise supporting structures
+const settings: ServerSetting[] = rawSettings.map((item, index): ServerSetting => 
+	{
+		const setting = new ServerSetting( item as JSONServerSetting )
+	
+		indices[setting.guild_id] = index;
+		let tag = setting.tag;
+		if (tag !== null) {
+			if (!clanCache.hasOwnProperty(tag)) {
+				clanCache[tag] = [];
+			}
+			clanCache[tag].push(setting.guild_id);
 		}
-		clanCache[tag].push(settings[i].guild_id);
-	}
 
-	rewards.loadRewards(settings[i]);
-	for (const webhook of settings[i].webhooks) {
-		subscribe(webhook.clan, webhook.url);
-	}
-}
+		rewards.loadRewards(setting);
+		for (const webhook of setting.webhooks) {
+			subscribe(webhook.clan, webhook.url);
+		}
 
-export function getDefaults(): ServerSetting {
-	return {roles: "all", auto_points: false, guild_id: "", tag: null, channel_id: [], log_channel_id: "", update_channel_id: "", mod_roles: [], rewards: [], multiplier: null, webhooks: [], win_feed: null, claim_channel: null, claim_channel_description: null, factor_buttons: [], status: 0};
-}
+		return setting;
+	});
+
+//Save settings to uplift settings.json
+updateSettings();
 
 function updateSettings() {
 	fs.writeFile("./settings.json", JSON.stringify(settings, null, 4), (err) => {
 		if (err) {
-			console.error(err);
+			console.error( "updateSettings()",err);
 		}
 	});
 }
@@ -98,25 +203,6 @@ export function removeServerSetting(guild: Snowflake) {
 			indices[settings[i].guild_id] = parseInt(i);
 		}
 	}
-}
-
-export function getMultiplier(context: BotUserContext): MultiplierSetting | null {
-	if (context.context.multiplier === null) return null;
-	if (context.context.multiplier.end !== null && context.context.multiplier.end < Date.now()) {
-		context.context.multiplier = null;
-		updateSettings();
-	}
-	return context.context.multiplier;
-}
-
-export function setMultiplier(context: BotUserContext, multiplier: MultiplierSetting ) {
-	context.context.multiplier = multiplier;
-	updateSettings();
-}
-
-export function clearMultiplier(context: BotUserContext) {
-	context.context.multiplier = null;
-	updateSettings();
 }
 
 export function updateClanTag(context: ServerSetting, tag: string | null) {

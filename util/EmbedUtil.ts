@@ -1,12 +1,26 @@
-import {Colors, EmbedBuilder, User} from "discord.js";
+import {Colors, EmbedBuilder, InteractionReplyOptions, BaseMessageOptions, MessageFlags, User} from "discord.js";
 import {RewardAnswer} from "./RewardManager.js";
 
-function createErrorEmbed(user: User, message: string) {
-	return {embeds: [new EmbedBuilder().setAuthor({name: user.tag, iconURL: user.displayAvatarURL()}).setDescription(message).setTimestamp().setColor(Colors.Red).toJSON()]};
+function createErrorEmbed(user: User, message: string) : BaseMessageOptions;
+function createErrorEmbed(user: User, message: string, flags: MessageFlags ) : InteractionReplyOptions;
+function createErrorEmbed(user: User, message: string, flags: MessageFlags | undefined = undefined ) {
+	const opt = { embeds: [new EmbedBuilder().setAuthor({name: user.tag, iconURL: user.displayAvatarURL()}).setDescription(message).setTimestamp().setColor(Colors.Red).toJSON()] } as BaseMessageOptions;
+	if( !flags )
+		return opt;
+	else
+		return { ...opt, flags: flags } as InteractionReplyOptions;
 }
 
-function createConfirmationEmbed(user: User, message: string) {
-	return {embeds: [new EmbedBuilder().setAuthor({name: user.tag, iconURL: user.displayAvatarURL()}).setDescription(message).setTimestamp().setColor(Colors.Green).toJSON()]};
+function createConfirmationEmbed(user: User, message: string) : BaseMessageOptions;
+function createConfirmationEmbed(user: User, message: string, flags: MessageFlags ) : InteractionReplyOptions;
+function createConfirmationEmbed(user: User, message: string, flags: MessageFlags | undefined = undefined) {
+	const opt = {
+			embeds: [new EmbedBuilder().setAuthor({name: user.tag, iconURL: user.displayAvatarURL()}).setDescription(message).setTimestamp().setColor(Colors.Green).toJSON()]
+		} as BaseMessageOptions;
+	if( !flags )
+		return opt;
+	else
+		return { ...opt, flags: flags } as InteractionReplyOptions;
 }
 
 export function sendUninitializedError(user: User) {

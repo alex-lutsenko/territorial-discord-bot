@@ -1,5 +1,5 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
-import {Command, db, logAction, PointCommand} from "../PointManager.js";
+import {logAction, PointCommand} from "../PointManager.js";
 import {MultiplierSetting, BotUserContext} from "../util/BotUserContext.js";
 import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil.js";
 
@@ -21,7 +21,7 @@ export default {
 		const subcommand = interaction.options.getSubcommand();
 		switch (subcommand) {
 			case "set":
-				if (db.getSettingProvider().getMultiplier(context) !== null) {
+				if (context.context.multiplier) {
 					await context.reply(createErrorEmbed(context.user, "A multiplier is already set, clear that one first!"));
 					return;
 				}
@@ -35,36 +35,36 @@ export default {
 				multiplier = Math.round(multiplier * 100) / 100;
 				let processedEnd: number | null = null;
 				if (end) {
-					const date = new Date(end + " UTC");
+					const date = new Date(end + " UTC"); //TODO need a better way to parse dates: add support for time zones?
 					if (isNaN(date.getTime())) {
 						await context.reply(createErrorEmbed(context.user, "Invalid date"));
 						return;
 					}
 					processedEnd = date.getTime();
 				}
-				await db.getSettingProvider().setMultiplier(context, { amount: multiplier, end: processedEnd, description: description } as MultiplierSetting );
+				context.context.multiplier = { amount: multiplier, end: processedEnd, description: description } as MultiplierSetting;
 				logAction(context, `Multiplier set to ${multiplier}x`, Colors.Yellow);
 				await context.reply(createConfirmationEmbed(context.user, `Set multiplier to ${multiplier}x with description \`${description}\`${processedEnd ? ` ending at <t:${Math.min(processedEnd / 1000)}>` : ""}`));
 				break;
 			case "clear":
-				db.getSettingProvider().clearMultiplier(context);
+				context.context.multiplier = null;
 				logAction(context, `Multiplier cleared`, Colors.Red);
 				await context.reply(createConfirmationEmbed(context.user, `Cleared the multiplier!`));
 				break;
 			case "setend":
-				const currentMultiplier = db.getSettingProvider().getMultiplier(context);
+				const currentMultiplier = context.context.multiplier;
 				if (!currentMultiplier) {
 					await context.reply(createErrorEmbed(context.user, `No multiplier set`));
 					return;
 				}
 				const endString = interaction.options.getString("date", true);
-				const date = new Date(endString + " UTC");
+				const date = new Date(endString + " UTC"); //TODO need a better way to parse dates: add support for time zones?
 				if (isNaN(date.getTime())) {
 					await context.reply(createErrorEmbed(context.user, `Invalid date`));
 					return;
 				}
 				currentMultiplier.end = date.getTime();
-				db.getSettingProvider().setMultiplier(context, currentMultiplier );
+				context.context.multiplier = currentMultiplier;
 				logAction(context, `Multiplier end date set to <t:${Math.min(date.getTime() / 1000)}>`, Colors.Yellow);
 				await context.reply(createConfirmationEmbed(context.user, `Set multiplier end date to <t:${Math.min(date.getTime() / 1000)}>`));
 				break;
@@ -75,7 +75,7 @@ export default {
 } as PointCommand;
 
 export async function sendMultiplierInformation(context: BotUserContext) {
-	const multiplier = db.getSettingProvider().getMultiplier(context);
+	const multiplier = context.context.multiplier;
 	if (!multiplier) {
 		await context.reply({embeds: [new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setDescription(`No multiplier is currently active`).setTimestamp().setColor(Colors.Blurple).toJSON()]});
 		return;
