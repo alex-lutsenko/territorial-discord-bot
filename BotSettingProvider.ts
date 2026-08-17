@@ -169,7 +169,7 @@ const settings: ServerSetting[] = rawSettings.map((item, index): ServerSetting =
 //Save settings to uplift settings.json
 updateSettings();
 
-function updateSettings() {
+export function updateSettings() {
 	fs.writeFile("./settings.json", JSON.stringify(settings, null, 4), (err) => {
 		if (err) {
 			console.error( "updateSettings()",err);

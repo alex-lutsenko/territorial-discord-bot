@@ -62,7 +62,7 @@ export async function handleFeedInteraction(interaction: Interaction) {
 	const context = getUser(interaction.member, interaction);
 	if (!(context instanceof BotUserContext)) return;
 	if (!context.canClaimWin()) {
-		await interaction.reply(createErrorEmbed(context.user, context.context.claim_win_roles_message));
+		await interaction.reply(createErrorEmbed(context.user, context.context.claim_win_roles_message, MessageFlags.Ephemeral));
 		return;
 	}
 	

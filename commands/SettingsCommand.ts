@@ -1,5 +1,5 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
-import {ServerSetting, setServerSetting, updateClanTag} from "../BotSettingProvider.js";
+import {ServerSetting, updateSettings, setServerSetting, updateClanTag} from "../BotSettingProvider.js";
 import {client, getCommandId, PointCommand, rewards} from "../PointManager.js";
 import {BotUserContext} from "../util/BotUserContext.js";
 import {getOrSendMessage} from "../util/ClaimWinChannel.js";
@@ -119,6 +119,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 	}
 	let embeds = [];
 	if (changes.length > 0) {
+		updateSettings(); //Save settings if anything was cleaned up
 		embeds.push(new EmbedBuilder().setTitle("Warning").setDescription(changes.join("\n")).setColor(isCritical ? Colors.Red : Colors.Yellow).toJSON());
 	}
 	embeds.push(new EmbedBuilder().setAuthor({name: context.guild.name, iconURL: context.guild.iconURL() || undefined})
@@ -294,12 +295,13 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 		updateClanTag(context.context, tag === "" ? null : tag.toUpperCase());
 		await context.reply(`Set the clan tag to ${context.context.tag || "None"}!`);
 	} else if( index === "setclaimwinrolemessage" ) {
+		const original = context.context.claim_win_roles_message;
 		context.context.claim_win_roles_message = data.options.getString("message", true);
-		await context.reply(`Message Set!`);
+		await context.reply(`The message:\n${original}\nhas been changed to:\n${context.context.claim_win_roles_message}`);
 	} else if( index === "resetclaimwinrolemessage" ) {
-		let original = context.context.claim_win_roles_message;
+		const original = context.context.claim_win_roles_message;
 		context.context.claim_win_roles_message = context.context.getDefaults().claim_win_roles_message;
-		await context.reply(`The message:\n${original}\n has been replaced by default message:\n${context.context.claim_win_roles_message}`);
+		await context.reply(`The message:\n${original}\nhas been changed to default message:\n${context.context.claim_win_roles_message}`);
 	} else if (["addchannel", "removechannel", "setlogchannel", "setupdatechannel", "setwinfeed", "setclaimchannel"].includes(index)) {
 		let channel = data.options.getChannel("channel", true);
 		if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) {
