@@ -63,7 +63,9 @@ export class ServerSetting implements JSONServerSetting
 	{
 		//add @everyone to claim_win_roles for new setups
 		if( this._guild_id === "" && this.claim_win_roles.length === 0 )
-				this.claim_win_roles.push(this.guild_id as Snowflake);
+				this.claim_win_roles.push(value as Snowflake);
+		
+		this._guild_id = value;
 	}
 
 	get multiplier() : MultiplierSetting | null

@@ -32,6 +32,10 @@ export default {
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BotUserContext) => {
 		const interaction = context.base as ChatInputCommandInteraction;
+		if( !context.context ) {
+			await context.reply({ embeds:[ new EmbedBuilder().setTitle("Critical Error").setDescription(`Could not find Guild Settings\nDid you forget to run </setup:${getCommandId("setup")}>?`).setColor(Colors.Red).toJSON()] });
+			return;
+		}
 		const sub = interaction.options.getSubcommand();
 		if (sub === "show") {
 			await showSettingsEmbed(context, 0);
