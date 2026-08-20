@@ -220,7 +220,7 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 				},
 				{
 					name: "🔐 Claim Win Roles",
-					value: `${context.claim_win_roles.length === 0 ? "🚫 No one can claim wins!" : context.claim_win_roles.map((id) => `<@&${id}>`).join("\n")}\nThese roles can use win claiming functions.\nEdit: </settings addclaimwinrole:${getCommandId("settings")}> & </settings removeclaimwinrole:${getCommandId("settings")}>\n\u200B`
+					value: `${context.claim_win_roles.length === 0 ? "🚫 No one can claim wins!" : context.claim_win_roles.map((id) => `<@&${id}>`).join("\n")}\nThese roles, in addition to Mod Roles, can use win claiming functions.\nEdit: </settings addclaimwinrole:${getCommandId("settings")}> & </settings removeclaimwinrole:${getCommandId("settings")}>\n\u200B`
 				},
 				{
 					name: "🔒 Claim Win Access Restricted Message",
